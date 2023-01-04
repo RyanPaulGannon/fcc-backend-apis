@@ -1,7 +1,6 @@
-# Node-Server
+# Exercise Tracker
 
 https://www.freecodecamp.org/learn/back-end-development-and-apis/ <br />
-Active Challenge: Exercise Tracker
 
 | Status | Description                                                                                                                                                     |
 | :----: | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
