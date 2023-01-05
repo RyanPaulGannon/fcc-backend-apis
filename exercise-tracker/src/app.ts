@@ -1,17 +1,8 @@
 import "dotenv/config"
 import cors from "cors"
+import mongoose, { Schema } from "mongoose"
 import express, { Application, Request, Response } from "express"
-import { connect } from "./database/client"
-import {
-  checkIfUserExists,
-  createUser,
-  findUserByUsername,
-  findUserById,
-  getAllUsers,
-  addExerciseData,
-  getExerciseLog,
-} from "./database/exerciseTracker"
-import { Prisma } from "@prisma/client"
+import { prisma } from "@prisma/client"
 
 /* config */
 const app: Application = express()
@@ -28,27 +19,51 @@ app.get("/", (req: Request, res: Response) => {
 })
 
 /* database */
-connect()
+mongoose.connect(process.env.DATABASE_URL!)
+
+const userSchema = new Schema(
+  {
+    username: {
+      type: String,
+      unique: true,
+    },
+  },
+  { versionKey: false }
+)
+
+const User = mongoose.model("User", userSchema)
+
+const exerciseSchema = new Schema({
+  username: String,
+  description: String,
+  duration: Number,
+  date: String,
+  userId: String,
+})
+
+const Exercise = mongoose.model("Exercise", exerciseSchema)
 
 /* Exercise Tracker */
 app
   .route("/api/users")
   .post(async (req: Request, res: Response) => {
     const username = req.body.username
+    const userExists = await User.findOne({ username })
 
-    if (!username) res.send("No user entered")
+    if (userExists) res.send(userExists)
 
-    const doesUserExist = await checkIfUserExists(username)
-
-    if (!doesUserExist) await createUser(username)
-
-    const user = await findUserByUsername(username)
-
-    res.json({ username, _id: user?.id })
+    const user = new User({ username, count: 0 })
+    user.save((err, user) => {
+      if (err) {
+        res.json({ error: err })
+      } else {
+        res.json(user)
+      }
+    })
   })
   .get(async (req: Request, res: Response) => {
-    const users = await getAllUsers()
-    res.json(users)
+    const users = await User.find()
+    res.send(users)
   })
 
 app.post("/api/users/:_id/exercises", async (req: Request, res: Response) => {
