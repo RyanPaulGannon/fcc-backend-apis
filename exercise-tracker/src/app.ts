@@ -1,15 +1,13 @@
 import "dotenv/config"
 import cors from "cors"
 import express, { Application, Request, Response } from "express"
-import { connect } from "./database/connect"
+import { connect } from "./database/client"
 import {
-  addExerciseData,
   checkIfUserExists,
   createUser,
   findUserByUsername,
   findUserById,
   getAllUsers,
-  findExerciseLog,
 } from "./database/exerciseTracker"
 
 /* config */
@@ -30,28 +28,29 @@ app.get("/", (req: Request, res: Response) => {
 connect()
 
 /* Exercise Tracker */
-app.get("/api/users", async (req: Request, res: Response) => {
-  const users = await getAllUsers()
-  res.json(users)
-})
+app
+  .route("/api/users")
+  .post(async (req: Request, res: Response) => {
+    let username = req.body.username
 
-app.post("/api/users", async (req: Request, res: Response) => {
-  let username = req.body.username
+    if (!username) res.send("No user entered")
 
-  if (!username) res.send("No user entered")
+    const doesUserExist = await checkIfUserExists(username)
 
-  const doesUserExist = await checkIfUserExists(username)
+    if (!doesUserExist) await createUser(username)
 
-  if (!doesUserExist) await createUser(username)
+    const user = await findUserByUsername(username)
 
-  const user = await findUserByUsername(username)
-
-  if (user) {
-    res.json({ username: user.username, _id: user.id })
-  } else {
-    res.send("Invalid")
-  }
-})
+    if (user) {
+      res.json({ username: user.username, _id: user.id })
+    } else {
+      res.send("Invalid")
+    }
+  })
+  .get(async (req: Request, res: Response) => {
+    const users = await getAllUsers()
+    res.json(users)
+  })
 
 app.post("/api/users/:_id/exercises", async (req: Request, res: Response) => {
   let { description, duration, date } = req.body
@@ -67,7 +66,7 @@ app.post("/api/users/:_id/exercises", async (req: Request, res: Response) => {
     new Date(date)
   }
 
-  await addExerciseData(description, Number(duration), date, id)
+  // await addExerciseData(description, Number(duration), date, id)
 
   res.json({
     _id: id,

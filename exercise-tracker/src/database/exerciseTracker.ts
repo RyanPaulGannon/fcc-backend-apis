@@ -7,13 +7,13 @@ export function createUser(username: string) {
 }
 
 export function checkIfUserExists(username: string) {
-  return prisma.user.findUnique({
+  return prisma.user.findFirst({
     where: { username },
   })
 }
 
 export function findUserByUsername(username: string) {
-  return prisma.user.findUnique({
+  return prisma.user.findFirst({
     where: { username },
     select: {
       username: true,
@@ -35,27 +35,5 @@ export function findUserById(id: string) {
 export function getAllUsers() {
   return prisma.user.findMany({
     select: { username: true, id: true },
-  })
-}
-
-export function addExerciseData(
-  description: string,
-  duration: number,
-  date: Date,
-  userId: string
-) {
-  return prisma.exercise.create({
-    data: {
-      description,
-      duration,
-      date,
-      userId,
-    },
-  })
-}
-
-export function findExerciseLog(userId: string) {
-  return prisma.exercise.findFirst({
-    where: { userId },
   })
 }
