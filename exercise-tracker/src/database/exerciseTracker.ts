@@ -37,3 +37,19 @@ export function getAllUsers() {
     select: { username: true, id: true },
   })
 }
+
+export function addExerciseData(id: string, exercises: any) {
+  return prisma.user.update({
+    data: {
+      log: exercises,
+    },
+    where: { id },
+  })
+}
+
+export function getExerciseLog(id: string) {
+  return prisma.user.findUnique({
+    where: { id },
+    select: { id: true, username: true, log: true },
+  })
+}

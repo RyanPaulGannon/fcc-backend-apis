@@ -8,7 +8,10 @@ import {
   findUserByUsername,
   findUserById,
   getAllUsers,
+  addExerciseData,
+  getExerciseLog,
 } from "./database/exerciseTracker"
+import { Prisma } from "@prisma/client"
 
 /* config */
 const app: Application = express()
@@ -31,16 +34,11 @@ connect()
 app
   .route("/api/users")
   .post(async (req: Request, res: Response) => {
-    let username = req.body.username
+    const username = req.body.username
 
     if (!username) res.send("No user entered")
 
-    const doesUserExist = await checkIfUserExists(username)
-
-    if (!doesUserExist) await createUser(username)
-
     const user = await findUserByUsername(username)
-
     if (user) {
       res.json({ username: user.username, _id: user.id })
     } else {
@@ -53,40 +51,41 @@ app
   })
 
 app.post("/api/users/:_id/exercises", async (req: Request, res: Response) => {
-  let { description, duration, date } = req.body
-  let id = req.params._id
+  const id = req.params._id
+  const description = req.body.description
+  const duration = parseInt(req.body.duration)
+  const date = req.body.date ? req.body.date : new Date()
 
   const user = await findUserById(id)
-
   if (!user) res.send("No user found")
 
-  if (!date) {
-    date = new Date()
-  } else {
-    new Date(date)
-  }
-
-  // await addExerciseData(description, Number(duration), date, id)
+  const exercises = [{ description, duration, date }] as Prisma.JsonArray
+  await addExerciseData(id, exercises)
 
   res.json({
-    _id: id,
     username: user?.username,
-    date: date.toDateString(),
-    duration: Number(duration),
     description,
+    duration,
+    date: date.toDateString(),
+    _id: id,
   })
 })
 
-// app.get("/api/users/:_id/logs", async (req: Request, res: Response) => {
-//   const userId = req.params._id
-//   const user = await findUserById(userId)
+app.get("/api/users/:_id/logs", async (req: Request, res: Response) => {
+  const id = req.params._id
+  const user = await getExerciseLog(id)
 
-//   if (!user) res.json({ message: "User not found" })
+  if (!user) res.json({ message: "User not found" })
 
-//   const exercises = await findExerciseLog(userId)
+  console.log(user?.log)
 
-//   res.json({ username: user?.username, exercises: exercises })
-// })
+  res.json({
+    username: user?.username,
+    count: 1,
+    _id: user?.id,
+    log: user?.log,
+  })
+})
 
 /* listener */
 app.listen(port, () => console.log(`Node Server listening on port ${port}`))
