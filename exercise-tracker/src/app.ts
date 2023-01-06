@@ -2,7 +2,6 @@ import "dotenv/config"
 import cors from "cors"
 import mongoose, { Schema } from "mongoose"
 import express, { Application, Request, Response } from "express"
-import { prisma } from "@prisma/client"
 import { connect } from "./database/client"
 
 /* config */
@@ -68,16 +67,12 @@ app
   })
 
 app.post("/api/users/:_id/exercises", async (req: Request, res: Response) => {
-  let _id = req.params._id
-  let date = req.body.date
+  const _id = req.params._id
   const description = req.body.description
   const duration = req.body.duration
-
-  if (date === "" || "undefined") {
-    date = new Date().toDateString()
-  } else {
-    date = new Date(date).toDateString()
-  }
+  const date = req.body.date
+    ? new Date(req.body.date).toDateString()
+    : new Date().toDateString()
 
   const expObj = {
     description,
@@ -91,7 +86,7 @@ app.post("/api/users/:_id/exercises", async (req: Request, res: Response) => {
     { new: true },
     (err, updatedUser) => {
       if (err) {
-        return console.log("update error:", err)
+        return res.json(err)
       }
 
       let returnObj = {
@@ -134,13 +129,11 @@ app.get("/api/users/:_id/logs", async (req: Request, res: Response) => {
       log = log.slice(0, limit)
     }
 
-    let count = log.length
-
     res.send({
       username: user.username,
-      count: count,
+      count: log.length,
       _id,
-      log: log,
+      log,
     })
   })
 })
