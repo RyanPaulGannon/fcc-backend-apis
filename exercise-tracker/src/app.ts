@@ -3,6 +3,7 @@ import cors from "cors"
 import mongoose, { Schema } from "mongoose"
 import express, { Application, Request, Response } from "express"
 import { prisma } from "@prisma/client"
+import { connect } from "./database/client"
 
 /* config */
 const app: Application = express()
@@ -19,93 +20,130 @@ app.get("/", (req: Request, res: Response) => {
 })
 
 /* database */
+// connect()
 mongoose.connect(process.env.DATABASE_URL!)
 
-const userSchema = new Schema(
-  {
-    username: {
-      type: String,
-      unique: true,
+const userSchema = new Schema({
+  username: { type: String, required: true },
+  log: [
+    {
+      description: { type: String, required: true },
+      duration: { type: Number, required: true },
+      date: { type: Date, required: true },
     },
-  },
-  { versionKey: false }
-)
-
-const User = mongoose.model("User", userSchema)
-
-const exerciseSchema = new Schema({
-  username: String,
-  description: String,
-  duration: Number,
-  date: String,
-  userId: String,
+  ],
 })
 
-const Exercise = mongoose.model("Exercise", exerciseSchema)
+const User = mongoose.model("user", userSchema)
 
 /* Exercise Tracker */
 app
   .route("/api/users")
   .post(async (req: Request, res: Response) => {
     const username = req.body.username
-    const userExists = await User.findOne({ username })
 
-    if (userExists) res.send(userExists)
-
-    const user = new User({ username, count: 0 })
-    user.save((err, user) => {
-      if (err) {
-        res.json({ error: err })
-      } else {
-        res.json(user)
-      }
+    let user = new User({
+      username: `${username}`,
+    })
+    user.save(function (err, data) {
+      if (err) return console.error(err)
+      res.send({
+        username,
+        _id: data._id,
+      })
     })
   })
   .get(async (req: Request, res: Response) => {
-    const users = await User.find()
-    res.send(users)
+    User.find({}, function (err: Error, users: any) {
+      var userMap: any = []
+
+      users.forEach(function (user: any) {
+        userMap.push({
+          _id: user.id,
+          username: user.username,
+        })
+      })
+      res.send(userMap)
+    })
   })
 
 app.post("/api/users/:_id/exercises", async (req: Request, res: Response) => {
-  let { description, duration, date } = req.body
-  console.log(description, duration, date)
-  res.json({})
+  let _id = req.params._id
+  let date = req.body.date
+  const description = req.body.description
+  const duration = req.body.duration
+
+  if (date === "" || "undefined") {
+    date = new Date().toDateString()
+  } else {
+    date = new Date(date).toDateString()
+  }
+
+  const expObj = {
+    description,
+    duration,
+    date,
+  }
+
+  User.findByIdAndUpdate(
+    _id,
+    { $push: { log: expObj } },
+    { new: true },
+    (err, updatedUser) => {
+      if (err) {
+        return console.log("update error:", err)
+      }
+
+      let returnObj = {
+        _id,
+        username: updatedUser?.username,
+        date: expObj.date,
+        duration: parseInt(expObj.duration),
+        description: expObj.description,
+      }
+      res.json(returnObj)
+    }
+  )
 })
 
-// app.post("/api/users/:_id/exercises", async (req: Request, res: Response) => {
-//   const id = req.params._id
-//   const description = req.body.description
-//   const duration = parseInt(req.body.duration)
-//   const date = req.body.date ? req.body.date : new Date()
+app.get("/api/users/:_id/logs", async (req: Request, res: Response) => {
+  const _id = req.params._id
+  const from: any = req.query.from
+  const to: any = req.query.to
+  const limit = +req.query.limit!
 
-//   const user = await findUserById(id)
-//   if (!user) res.send("No user found")
+  User.findById({ _id }, (err: any, user: any) => {
+    if (err) return console.log(err)
 
-//   const exercises = [{ description, duration, date }] as Prisma.JsonArray
-//   await addExerciseData(id, exercises)
+    let log = user.log.map((item: any) => {
+      return {
+        description: item.description,
+        duration: item.duration,
+        date: new Date(item.date).toDateString(),
+      }
+    })
+    if (from) {
+      const fromDate = new Date(from)
+      log = log.filter((exe: any) => new Date(exe.date) >= fromDate)
+    }
+    if (to) {
+      const toDate = new Date(to)
+      log = log.filter((exe: any) => new Date(exe.date) <= toDate)
+    }
+    if (limit) {
+      log = log.slice(0, limit)
+    }
 
-//   res.json({
-//     username: user?.username,
-//     description,
-//     duration,
-//     date: date.toDateString(),
-//     _id: id,
-//   })
-// })
+    let count = log.length
 
-// app.get("/api/users/:_id/logs", async (req: Request, res: Response) => {
-//   const id = req.params._id
-//   const user = await getExerciseLog(id)
-
-//   if (!user) res.json({ message: "User not found" })
-
-//   res.json({
-//     username: user?.username,
-//     count: 1,
-//     _id: user?.id,
-//     log: user?.log,
-//   })
-// })
+    res.send({
+      username: user.username,
+      count: count,
+      _id,
+      log: log,
+    })
+  })
+})
 
 /* listener */
 app.listen(port, () => console.log(`Node Server listening on port ${port}`))
