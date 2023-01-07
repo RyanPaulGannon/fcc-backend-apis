@@ -21,12 +21,12 @@ app.get("/", (req: Request, res: Response) => {
 /*  */
 app.post(
   "/api/fileanalyse",
-  upload.single("file"),
+  upload.single("upfile"),
   (req: Request, res: Response) => {
     res.json({
-      name: req.body.filename,
-      type: req.headers["content-type"],
-      size: req.body.size,
+      name: req.file?.originalname,
+      type: req.file?.mimetype,
+      size: req.file?.size,
     })
   }
 )
