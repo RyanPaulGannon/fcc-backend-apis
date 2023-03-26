@@ -19,8 +19,8 @@ app.get("/", (req: Request, res: Response) => {
 })
 
 /* database */
-// connect()
-mongoose.connect(process.env.DATABASE_URL!)
+connect()
+// mongoose.connect(process.env.DATABASE_URL!)
 
 const userSchema = new Schema({
   username: { type: String, required: true },
